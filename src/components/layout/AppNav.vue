@@ -6,6 +6,7 @@ const inventory = useInventoryStore()
 const links = [
   { to: '/', label: '首页', icon: '🏠' },
   { to: '/inventory', label: '食材库存', icon: '🥬', badge: () => inventory.items.length },
+  { to: '/zones', label: '冰箱分区', icon: '🧊' },
   { to: '/meal-plan', label: '每周食谱', icon: '📅' },
   { to: '/shopping', label: '采购清单', icon: '🛒' },
   { to: '/diet', label: '饮食记录', icon: '🍽️' },

@@ -16,6 +16,7 @@ function createItem(data) {
     purchaseDate: '',
     shelfLifeDays: 7,
     location: '冷藏',
+    zoneId: '',
     note: '',
     photo: '',
     ...data,
@@ -95,7 +96,7 @@ export const useInventoryStore = defineStore('inventory', {
     },
 
     // 入库（增加数量），不存在则新建
-    restock({ name, unit, quantity, category = '其他', location = '常温', shelfLifeDays = 7 }) {
+    restock({ name, unit, quantity, category = '其他', location = '常温', zoneId = '', shelfLifeDays = 7 }) {
       const exist = this.items.find(
         (i) => i.name === name && i.unit === unit,
       )
@@ -108,6 +109,7 @@ export const useInventoryStore = defineStore('inventory', {
           quantity,
           category,
           location,
+          zoneId,
           shelfLifeDays,
           purchaseDate: new Date().toISOString().slice(0, 10),
         })

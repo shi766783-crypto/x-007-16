@@ -1,6 +1,8 @@
 <script setup>
 import { ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useInventoryStore } from '@/stores/inventory'
+import { useZoneStore } from '@/stores/zones'
 import { CATEGORIES, LOCATIONS, CATEGORY_ICONS, LOCATION_ICONS } from '@/constants'
 import IngredientForm from '@/components/inventory/IngredientForm.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
@@ -10,12 +12,16 @@ import BaseEmpty from '@/components/common/BaseEmpty.vue'
 import { formatDate } from '@/utils/date'
 
 const inventory = useInventoryStore()
+const zoneStore = useZoneStore()
+const route = useRoute()
 
 const showForm = ref(false)
 const editing = ref(null)
 const filterCategory = ref('全部')
 const filterStatus = ref('全部')
 const filterLocation = ref('全部')
+// 区域筛选：'全部' | 'none'（未分配） | zoneId，支持从分区页带参跳转
+const filterZone = ref(typeof route.query.zone === 'string' ? route.query.zone : '全部')
 
 const statusFilter = ['全部', 'fresh', 'near', 'expired']
 
@@ -24,9 +30,15 @@ const filtered = computed(() =>
     if (filterCategory.value !== '全部' && i.category !== filterCategory.value) return false
     if (filterLocation.value !== '全部' && i.location !== filterLocation.value) return false
     if (filterStatus.value !== '全部' && i.status !== filterStatus.value) return false
+    if (filterZone.value === 'none' && i.zoneId) return false
+    else if (filterZone.value !== '全部' && filterZone.value !== 'none' && i.zoneId !== filterZone.value) return false
     return true
   }),
 )
+
+function zoneName(item) {
+  return item.zoneId ? zoneStore.nameOf(item.zoneId) : ''
+}
 
 function openAdd() {
   editing.value = null
@@ -95,6 +107,20 @@ function statusTag(item) {
           {{ l === '全部' ? '全部' : LOCATION_ICONS[l] + ' ' + l }}
         </button>
       </div>
+      <div class="filter-group">
+        <span class="f-label">区域</span>
+        <button class="chip" :class="{ on: filterZone === '全部' }" @click="filterZone = '全部'">全部</button>
+        <button
+          v-for="z in zoneStore.zones"
+          :key="z.id"
+          class="chip"
+          :class="{ on: filterZone === z.id }"
+          @click="filterZone = z.id"
+        >
+          {{ z.icon }} {{ z.name }}
+        </button>
+        <button class="chip" :class="{ on: filterZone === 'none' }" @click="filterZone = 'none'">❓ 未分配</button>
+      </div>
     </div>
 
     <BaseEmpty v-if="!filtered.length" emoji="🧺" text="库存空空如也，点击右上角添加食材吧" />
@@ -106,7 +132,10 @@ function statusTag(item) {
           <div v-else class="thumb icon">{{ CATEGORY_ICONS[item.category] }}</div>
           <div class="head-info">
             <div class="name">{{ item.name }}</div>
-            <div class="meta muted">{{ item.quantity }}{{ item.unit }} · {{ LOCATION_ICONS[item.location] }} {{ item.location }}</div>
+            <div class="meta muted">
+              {{ item.quantity }}{{ item.unit }} · {{ LOCATION_ICONS[item.location] }} {{ item.location
+              }}<template v-if="zoneName(item)"> · 📍 {{ zoneName(item) }}</template>
+            </div>
           </div>
           <BaseTag :category="item.category" :text="item.category" />
         </div>

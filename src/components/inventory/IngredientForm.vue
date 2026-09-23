@@ -1,6 +1,7 @@
 <script setup>
-import { reactive, computed } from 'vue'
+import { reactive, computed, watch } from 'vue'
 import { CATEGORIES, UNITS, LOCATIONS } from '@/constants'
+import { useZoneStore } from '@/stores/zones'
 import { toDateKey, expiryDateKey } from '@/utils/date'
 import PhotoUpload from '@/components/common/PhotoUpload.vue'
 
@@ -8,6 +9,8 @@ const props = defineProps({
   initial: { type: Object, default: null },
 })
 const emit = defineEmits(['submit', 'cancel'])
+
+const zoneStore = useZoneStore()
 
 const form = reactive({
   name: props.initial?.name || '',
@@ -17,9 +20,23 @@ const form = reactive({
   purchaseDate: props.initial?.purchaseDate || toDateKey(),
   shelfLifeDays: props.initial?.shelfLifeDays ?? 7,
   location: props.initial?.location || '冷藏',
+  zoneId: props.initial?.zoneId || '',
   note: props.initial?.note || '',
   photo: props.initial?.photo || '',
 })
+
+// 当前位置下的可选分区
+const availableZones = computed(() => zoneStore.zonesOf(form.location))
+
+// 切换存放位置时，若原分区不属于新位置则清空
+watch(
+  () => form.location,
+  () => {
+    if (form.zoneId && !availableZones.value.some((z) => z.id === form.zoneId)) {
+      form.zoneId = ''
+    }
+  },
+)
 
 const expiry = computed(() =>
   form.purchaseDate ? expiryDateKey(form.purchaseDate, Number(form.shelfLifeDays)) : '',
@@ -56,6 +73,17 @@ function submit() {
           <option v-for="l in LOCATIONS" :key="l" :value="l">{{ l }}</option>
         </select>
       </div>
+    </div>
+
+    <div class="field">
+      <label>存放区域</label>
+      <select v-model="form.zoneId">
+        <option value="">未指定</option>
+        <option v-for="z in availableZones" :key="z.id" :value="z.id">{{ z.icon }} {{ z.name }}</option>
+      </select>
+      <p v-if="!availableZones.length" class="zone-hint">
+        「{{ form.location }}」还没有分区，可先到「冰箱分区」页创建
+      </p>
     </div>
 
     <div class="row">
@@ -147,6 +175,11 @@ textarea:focus {
   border-radius: 8px;
   color: var(--warn);
   font-weight: 600;
+}
+.zone-hint {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-2);
 }
 .actions {
   display: flex;

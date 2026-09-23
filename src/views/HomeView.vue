@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useInventoryStore } from '@/stores/inventory'
+import { useZoneStore } from '@/stores/zones'
 import { useStatsStore } from '@/stores/stats'
 import { useUserStore } from '@/stores/user'
 import BaseTag from '@/components/common/BaseTag.vue'
@@ -8,6 +9,7 @@ import BaseEmpty from '@/components/common/BaseEmpty.vue'
 import { expiryDateKey } from '@/utils/date'
 
 const inventory = useInventoryStore()
+const zoneStore = useZoneStore()
 const stats = useStatsStore()
 const user = useUserStore()
 
@@ -16,6 +18,11 @@ const near = computed(() => inventory.nearExpiryItems)
 const priority = computed(() =>
   [...inventory.expiredItems, ...inventory.nearExpiryItems].sort((a, b) => a.remain - b.remain),
 )
+
+function zoneText(item) {
+  const name = item.zoneId ? zoneStore.nameOf(item.zoneId) : ''
+  return name ? `${item.location}·${name}` : item.location
+}
 </script>
 
 <template>
@@ -63,7 +70,7 @@ const priority = computed(() =>
               />
             </div>
             <div class="meta muted">
-              {{ item.quantity }}{{ item.unit }} · {{ item.location }} · 过期日 {{ expiryDateKey(item.purchaseDate, item.shelfLifeDays) }}
+              {{ item.quantity }}{{ item.unit }} · 📍 {{ zoneText(item) }} · 过期日 {{ expiryDateKey(item.purchaseDate, item.shelfLifeDays) }}
             </div>
           </div>
           <router-link to="/challenge" class="btn-use">做菜</router-link>

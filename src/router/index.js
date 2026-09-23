@@ -3,6 +3,7 @@ import { createRouter, createWebHashHistory } from 'vue-router'
 const routes = [
   { path: '/', name: 'home', component: () => import('@/views/HomeView.vue'), meta: { title: '首页' } },
   { path: '/inventory', name: 'inventory', component: () => import('@/views/InventoryView.vue'), meta: { title: '食材库存' } },
+  { path: '/zones', name: 'zones', component: () => import('@/views/ZonesView.vue'), meta: { title: '冰箱分区' } },
   { path: '/meal-plan', name: 'meal-plan', component: () => import('@/views/MealPlanView.vue'), meta: { title: '每周食谱计划' } },
   { path: '/shopping', name: 'shopping', component: () => import('@/views/ShoppingListView.vue'), meta: { title: '采购清单' } },
   { path: '/diet', name: 'diet', component: () => import('@/views/DietRecordView.vue'), meta: { title: '每日饮食记录' } },
