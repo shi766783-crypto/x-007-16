@@ -1,6 +1,15 @@
 <script setup>
+import { onMounted } from 'vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import AppNav from '@/components/layout/AppNav.vue'
+import { useZonesStore } from '@/stores/zones'
+
+const zones = useZonesStore()
+
+onMounted(() => {
+  // 首次使用播种默认分区，并把仅有三档位置的历史食材迁移到默认分区
+  zones.migrate()
+})
 </script>
 
 <template>

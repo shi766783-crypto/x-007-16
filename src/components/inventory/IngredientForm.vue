@@ -1,13 +1,16 @@
 <script setup>
-import { reactive, computed } from 'vue'
-import { CATEGORIES, UNITS, LOCATIONS } from '@/constants'
+import { reactive, computed, ref, watch } from 'vue'
+import { CATEGORIES, UNITS, LOCATIONS, LOCATION_ICONS } from '@/constants'
 import { toDateKey, expiryDateKey } from '@/utils/date'
 import PhotoUpload from '@/components/common/PhotoUpload.vue'
+import { useZonesStore } from '@/stores/zones'
 
 const props = defineProps({
   initial: { type: Object, default: null },
 })
 const emit = defineEmits(['submit', 'cancel'])
+
+const zones = useZonesStore()
 
 const form = reactive({
   name: props.initial?.name || '',
@@ -17,9 +20,51 @@ const form = reactive({
   purchaseDate: props.initial?.purchaseDate || toDateKey(),
   shelfLifeDays: props.initial?.shelfLifeDays ?? 7,
   location: props.initial?.location || '冷藏',
+  zoneId: props.initial?.zoneId || '',
   note: props.initial?.note || '',
   photo: props.initial?.photo || '',
 })
+
+// 当前存放方式下可选的具体分区
+const zoneOptions = computed(() => zones.byType[form.location] || [])
+
+// 初始 zoneId 与 location 不一致（如旧数据或默认值）时，回退到该方式的第一个分区
+watch(
+  zoneOptions,
+  (list) => {
+    if (!list.some((z) => z.id === form.zoneId)) {
+      form.zoneId = list[0]?.id || ''
+    }
+  },
+  { immediate: true },
+)
+
+// 切换存放方式时分区随之切换；并顺手新建分区
+function changeLocation(type) {
+  form.location = type
+  form.zoneId = zoneOptions.value[0]?.id || ''
+}
+
+const creating = ref(false)
+const newZoneName = ref('')
+
+function toggleCreate() {
+  creating.value = !creating.value
+  newZoneName.value = ''
+}
+
+function confirmCreate() {
+  const name = newZoneName.value.trim()
+  if (!name) return
+  try {
+    const zone = zones.addZone({ name, type: form.location })
+    form.zoneId = zone.id
+    creating.value = false
+    newZoneName.value = ''
+  } catch (e) {
+    alert(e.message)
+  }
+}
 
 const expiry = computed(() =>
   form.purchaseDate ? expiryDateKey(form.purchaseDate, Number(form.shelfLifeDays)) : '',
@@ -27,6 +72,10 @@ const expiry = computed(() =>
 
 function submit() {
   if (!form.name.trim()) return
+  if (!form.zoneId) {
+    alert('请先选择或新建一个存放分区')
+    return
+  }
   emit('submit', {
     ...form,
     name: form.name.trim(),
@@ -51,10 +100,33 @@ function submit() {
         </select>
       </div>
       <div class="field">
-        <label>存放位置</label>
-        <select v-model="form.location">
-          <option v-for="l in LOCATIONS" :key="l" :value="l">{{ l }}</option>
+        <label>存放方式</label>
+        <select :value="form.location" @change="changeLocation($event.target.value)">
+          <option v-for="l in LOCATIONS" :key="l" :value="l">{{ LOCATION_ICONS[l] }} {{ l }}</option>
         </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>存放分区 *</label>
+      <div class="zone-picker">
+        <select v-model="form.zoneId" class="zone-select">
+          <option v-for="z in zoneOptions" :key="z.id" :value="z.id">
+            {{ z.icon }} {{ z.name }}
+          </option>
+        </select>
+        <button type="button" class="zone-new" @click="toggleCreate">
+          {{ creating ? '取消' : '+ 新建分区' }}
+        </button>
+      </div>
+      <div v-if="creating" class="zone-create">
+        <input
+          v-model="newZoneName"
+          type="text"
+          :placeholder="`在「${form.location}」下新建分区，如：门架搁板`"
+          @keyup.enter.prevent="confirmCreate"
+        />
+        <button type="button" class="zone-confirm" @click="confirmCreate">创建</button>
       </div>
     </div>
 
@@ -140,6 +212,39 @@ select:focus,
 textarea:focus {
   outline: none;
   border-color: var(--primary);
+}
+.zone-picker {
+  display: flex;
+  gap: 8px;
+}
+.zone-select {
+  flex: 1;
+}
+.zone-new {
+  border: 1px dashed var(--primary);
+  background: var(--primary-light);
+  color: var(--primary-dark);
+  border-radius: 8px;
+  padding: 0 14px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.zone-create {
+  display: flex;
+  gap: 8px;
+}
+.zone-create input {
+  flex: 1;
+}
+.zone-confirm {
+  border: none;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 8px;
+  padding: 0 16px;
+  font-size: 13px;
+  cursor: pointer;
 }
 .expiry-hint {
   padding: 8px 12px;

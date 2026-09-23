@@ -3,6 +3,7 @@ import { read, write } from '@/utils/storage'
 import { uid } from '@/utils/id'
 import { remainingDays } from '@/utils/date'
 import { EXPIRY_WARN_DAYS } from '@/constants'
+import { useZonesStore } from '@/stores/zones'
 
 const STORAGE_KEY = 'inventory'
 
@@ -16,6 +17,7 @@ function createItem(data) {
     purchaseDate: '',
     shelfLifeDays: 7,
     location: '冷藏',
+    zoneId: '', // 具体存放分区（冷藏/冷冻/常温下的自定义区域）
     note: '',
     photo: '',
     ...data,
@@ -76,7 +78,14 @@ export const useInventoryStore = defineStore('inventory', {
     updateItem(id, patch) {
       const idx = this.items.findIndex((i) => i.id === id)
       if (idx === -1) return
-      this.items[idx] = { ...this.items[idx], ...patch }
+      const next = { ...this.items[idx], ...patch }
+      // 分区决定存放方式：换分区时同步 location，避免两者不一致
+      if (patch.zoneId !== undefined) {
+        const zones = useZonesStore()
+        const zone = zones.zoneMap[patch.zoneId]
+        if (zone) next.location = zone.type
+      }
+      this.items[idx] = next
       this.persist()
     },
 
@@ -94,20 +103,32 @@ export const useInventoryStore = defineStore('inventory', {
       else this.updateItem(id, { quantity: next })
     },
 
+    // 移动食材到指定分区
+    moveItem(id, zoneId) {
+      this.updateItem(id, { zoneId })
+    },
+
     // 入库（增加数量），不存在则新建
-    restock({ name, unit, quantity, category = '其他', location = '常温', shelfLifeDays = 7 }) {
+    restock({ name, unit, quantity, category = '其他', location = '常温', zoneId = '', shelfLifeDays = 7 }) {
       const exist = this.items.find(
         (i) => i.name === name && i.unit === unit,
       )
       if (exist) {
         this.updateItem(exist.id, { quantity: Number(exist.quantity) + Number(quantity) })
       } else {
+        // 未指定分区时，落到该存放方式的第一个分区
+        let targetZone = zoneId
+        if (!targetZone) {
+          const zones = useZonesStore()
+          targetZone = zones.byType[location]?.[0]?.id || zones.zones[0]?.id || ''
+        }
         this.addItem({
           name,
           unit,
           quantity,
           category,
           location,
+          zoneId: targetZone,
           shelfLifeDays,
           purchaseDate: new Date().toISOString().slice(0, 10),
         })

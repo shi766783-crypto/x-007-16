@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useInventoryStore } from '@/stores/inventory'
+import { useZonesStore } from '@/stores/zones'
 import { useStatsStore } from '@/stores/stats'
 import { useUserStore } from '@/stores/user'
 import BaseTag from '@/components/common/BaseTag.vue'
@@ -8,6 +9,7 @@ import BaseEmpty from '@/components/common/BaseEmpty.vue'
 import { expiryDateKey } from '@/utils/date'
 
 const inventory = useInventoryStore()
+const zones = useZonesStore()
 const stats = useStatsStore()
 const user = useUserStore()
 
@@ -63,7 +65,10 @@ const priority = computed(() =>
               />
             </div>
             <div class="meta muted">
-              {{ item.quantity }}{{ item.unit }} · {{ item.location }} · 过期日 {{ expiryDateKey(item.purchaseDate, item.shelfLifeDays) }}
+              {{ item.quantity }}{{ item.unit }} ·
+              {{ zones.zoneMap[item.zoneId]?.icon || '📍' }}
+              {{ zones.nameOf(item.zoneId, item.location) }}
+              · 过期日 {{ expiryDateKey(item.purchaseDate, item.shelfLifeDays) }}
             </div>
           </div>
           <router-link to="/challenge" class="btn-use">做菜</router-link>
